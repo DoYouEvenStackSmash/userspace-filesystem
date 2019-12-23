@@ -22,7 +22,7 @@
 #define SZ_CHAINLINK 2
 #define MAX_LEN_FILENAME 12
 #define INODE_START 2
-#define DEBUG 1
+#define DEBUG 0
 
 typedef struct fileObject fObj;
 typedef struct fileBlock fBlk;
@@ -203,10 +203,10 @@ int extendfObj(fUMan* fm, unsigned short newlen, int id);
 int reducefObj(fUMan* fm,unsigned short size,int id);
 
 /*locate the starting block for read/write operation*/
-void seekStartfBlk(fObj* fo, fBlk** hRef, size_t size, off_t off);
+int seekStartfBlk(fObj* fo, fBlk** hRef, size_t size, off_t off);
 
 /*read/write on file id, seek to off_t and read size_t bytes to/from buffer*/
-unsigned long readFromFile(fUMan* fm, int id,char* buffer, size_t size, off_t off);
+unsigned long readFromFile(fUMan* fm, int id,unsigned char* buffer, size_t size, off_t off);
 unsigned long writeToFile(fUMan* fm,int id,const char* buffer,size_t size,off_t off);
 
 //write fUMan* to disk

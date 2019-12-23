@@ -85,6 +85,7 @@ void* initdFEnt(unsigned char type,char* name,unsigned short size,unsigned short
 
 //init fObj array
 void initfObjArrQ(fUMan* fm, fObj*** listRef,rBlk* rb,FILE* fptr){
+	DEBUG?:printf("initfObjArrQ\n");
 	fObj** ll=malloc(sizeof(fObj*)*fm->max_fObjs);
 	//initialize reserved inode 0
 	ll[0]=initfObj(0);
@@ -103,7 +104,7 @@ void initfObjArrQ(fUMan* fm, fObj*** listRef,rBlk* rb,FILE* fptr){
 	long dir_end=(rb->end_dir_blk+1)*SZ_BLOCK;
 	int inodeVal=INODE_START;
 	unsigned char buffer[SZ_DIRENTRY];
-	
+	memset(buffer,0,sizeof(unsigned char)*SZ_DIRENTRY);
 	fseek(fptr,dir_start,SEEK_SET);
 	//iterate over the entire directory section of image file
 	/*
@@ -117,8 +118,11 @@ void initfObjArrQ(fUMan* fm, fObj*** listRef,rBlk* rb,FILE* fptr){
 	* 	enqueue an INACTIVE fileObject by setting its prev/next ptrs
 	*	add the inactive fileOBject to the table
 	*/
+	size_t bytes;
 	while (ftell(fptr)!=dir_end){
-		fread(buffer,SZ_DIRENTRY,1,fptr);
+		//fread(buffer,SZ_DIRENTRY,1,fptr);
+		bytes=fread(buffer,sizeof(unsigned char),SZ_DIRENTRY,fptr);
+		DEBUG?:printf("fObj fread:\t%d:\t%lu/%d retrieved\n",inodeVal,bytes,SZ_DIRENTRY);
 		if (buffer[0]!=buffer[1]){
 			dFEnt* dfe=malloc(sizeof(dFEnt));
 			memcpy(&*dfe,&buffer,SZ_DIRENTRY);
@@ -148,6 +152,8 @@ void initfObjArrQ(fUMan* fm, fObj*** listRef,rBlk* rb,FILE* fptr){
 
 //init fBlk array
 void initfBlkArrQ(fUMan* fm, fBlk*** listRef,rBlk* rb,FILE* fptr){
+	DEBUG?:printf("initfBlkArrQ\n");
+	
 	fBlk** nextBlk=NULL;
 	fBlk** lb=malloc(sizeof(fBlk*)*fm->max_fBlks);
 	for(int i=0;i<fm->max_fBlks;i++)
@@ -170,8 +176,12 @@ void initfBlkArrQ(fUMan* fm, fBlk*** listRef,rBlk* rb,FILE* fptr){
 	* 	fm->avail_fBlks<=fm->user_fBlks<=fm->max_fBlks
 	* 	
 	*/
+	size_t bytes;
 	while (blockID<fm->user_fBlks){
-		fread(&bufferval,sizeof(unsigned short),1,fptr);
+		//fread(&bufferval,sizeof(unsigned short),1,fptr);
+		bytes=fread(&bufferval,sizeof(unsigned short),1,fptr);
+		DEBUG?:printf("fBlk fread:\t%d:\t%lu/%d retrieved\n",blockID,bytes,1);
+
 		if (bufferval==65532){
 			hold= fm->fBlkQ_head ? fm->fBlkQ_head->fBlk_id : -1;
 			PushBlk(&(fm->fBlkQ_head),blockID);
@@ -225,6 +235,7 @@ void initfBlkArrQ(fUMan* fm, fBlk*** listRef,rBlk* rb,FILE* fptr){
 
 //init fileUnitManager
 void* initfUMan(rBlk* rb,FILE* fptr){
+	DEBUG?:printf("initfUMan\n");
 	fUMan* fm=malloc(sizeof(fUMan));
 	fm->imgName=NULL;
 	fm->rb=NULL;
@@ -267,24 +278,31 @@ void destroyfUMan(fUMan* fm){
 //finish building files present in image
 void assemblefObjfBlks(fUMan* fm,int id){
 	FILE* fptr;//spc
-	fptr=fopen(fm->imgName,"r");//spc
+	fptr=fopen(fm->imgName,"rb");//spc
 	fObj* fo=fm->arr_fObjs[id];
 	fo->len=fo->dfe->file_sz*SZ_BLOCK;
 	fo->HT_PN[0]=(void*)(fm->arr_fBlks[fo->dfe->start_blk]);
 	fBlk* temp=(fBlk*)(fo->HT_PN[0]);
-
+	size_t bytes;
 	while(temp->next){
-		temp->data=malloc(sizeof(unsigned char)*SZ_BLOCK);//spc
-		fseek(fptr, temp->fBlk_id*SZ_BLOCK,0);//spc
-		fread(temp->data,SZ_BLOCK,1,fptr);//spc
+		temp->data=(unsigned char*)calloc(sizeof(unsigned char),SZ_BLOCK);//spc
+		if (fseek(fptr, temp->fBlk_id*SZ_BLOCK,0)){//spc
+			DEBUG?:printf("invalid fseek!\n");
+			DEBUG?:displayfBlk(temp);
+		}
+		bytes=fread(temp->data,sizeof(unsigned char),SZ_BLOCK,fptr);//spc
+		DEBUG?:printf("assemble fBObjfBlk fread:\t%d:\t%lu/%d retrieved\n",temp->fBlk_id,bytes,SZ_BLOCK);
 		(*temp->next)->prev=&(fm->arr_fBlks[temp->fBlk_id]);
 		//DEBUG?:printf("%d->",temp->fBlk_id);
 		temp->fObj_id=id;
 		temp=*(temp->next);
 	}
-	temp->data=malloc(sizeof(unsigned char)*SZ_BLOCK);
+
+	temp->data=(unsigned char*)calloc(sizeof(unsigned char),SZ_BLOCK);
 	fseek(fptr,temp->fBlk_id*SZ_BLOCK,0);//spc
-	fread(temp->data,SZ_BLOCK,1,fptr);//spc
+	bytes=fread(temp->data,sizeof(unsigned char),SZ_BLOCK,fptr);//spc
+	DEBUG?:printf("assemble fBObjfBlk fread:\t%d:\t%lu/%d retrieved\n",temp->fBlk_id,bytes,SZ_BLOCK);
+	//fread(temp->data,SZ_BLOCK,1,fptr);//spc
 	fclose(fptr);//spc
 	//DEBUG?:printf("%dEND\n",temp->fBlk_id);
 	temp->fObj_id=id;
@@ -336,7 +354,7 @@ int activatefObj(fUMan* fm,dFEnt* dfe){
 	fb->active=1;
 	fb->fObj_id=fo->fObj_id;
 	
-	fb->data=calloc(sizeof(unsigned char),SZ_BLOCK);
+	fb->data=(unsigned char*)calloc(sizeof(unsigned char),SZ_BLOCK);
 	if (fb->next){
 		(*fb->next)->prev=NULL;
 		fm->fBlkQ_head=*fb->next;
@@ -491,36 +509,60 @@ int reducefObj(fUMan* fm, unsigned short newLen, int id){
 }
 
 
-
-//identify read/write startblock
-void seekStartfBlk(fObj* fo, fBlk** headRef, size_t size, off_t off){
+int seekStartfBlk(fObj* fo, fBlk** headRef, size_t size, off_t off){
 	int startBlock=floor(off/SZ_BLOCK);
+	printf("fObj%d\t",fo->fObj_id);
+	printf("seekStartBlock%d\n",startBlock);
 	fBlk* head=(fBlk*)(fo->HT_PN[0]);
+	fBlk* tail=(fBlk*)(fo->HT_PN[1]);
 	DEBUG?:printf("[HEAD]");
-	for(int i=0;i<startBlock;i++){
+	int i=0;
+	while(head!=tail && i<startBlock){
+	//for(int i=0;i<startBlock;i++){
 		DEBUG?:printf("%d-",head->fBlk_id);
 		head=*head->next;
+		i++;
 	}
-	(*headRef)=head;
 	DEBUG?:printf("(START)");
+	DEBUG?:printf("\nstartBlock: %d\ni: %d\n",startBlock,i);
+	(*headRef)=head;
+	if (i<startBlock)
+		return SZ_BLOCK;
+	return 0;
 }
 
-unsigned long readFromFile(fUMan* fm, int id,char* buf, size_t size, off_t off){
+// //identify read/write startblock
+// void seekStartfBlk(fObj* fo, fBlk** headRef, size_t size, off_t off){
+// 	int startBlock=floor(off/SZ_BLOCK);
+// 	fBlk* head=(fBlk*)(fo->HT_PN[0]);
+// 	DEBUG?:printf("[HEAD]");
+// 	for(int i=0;i<startBlock;i++){
+// 		DEBUG?:printf("%d-",head->fBlk_id);
+// 		head=*head->next;
+// 	}
+// 	(*headRef)=head;
+// 	DEBUG?:printf("(START)");
+// }
+
+unsigned long readFromFile(fUMan* fm, int id,unsigned char* buf, size_t size, off_t off){
 	fObj* fo=fm->arr_fObjs[id];
 	DEBUG?:printf("\tReading bytes from file...\n");
-	DEBUG?:printf("\n\n***********BUFFER SIZE***********\nreadFromFile\n\nbuf:%lu *buf: %lu &buf:%lu\n*************************\n",sizeof(buf),sizeof(*buf),sizeof(&buf));
-	DEBUG?:printf("%p<-source addr\n",buf);
+	DEBUG?:printf("buf addr:\t%p\n",&(*buf));
 	DEBUG?:printf("READ\n\tsource buf sz %lu,size %lu\n",sizeof(buf),size);
-	DEBUG?:printf("\twriting ino: %d,size: %lu, off_t: %lu\n",id,size,off);
-	DEBUG?:printf("\tdest buf sz %d\n",fo->dfe->file_sz*SZ_BLOCK-fo->len);
-
+	DEBUG?:printf("\treading ino: %d,size: %lu, off_t: %lu\n",id,size,off);
+	//DEBUG?:printf("\tdest buf sz %d\n",fo->dfe->file_sz*SZ_BLOCK-fo->len);
+	// if (size+off>fo->len){
+	// 	return 0;
+	// }
 	fBlk* head=NULL;
-	seekStartfBlk(fo,&head,size,off);
+	int adj=seekStartfBlk(fo,&head,size,off);
+	DEBUG?:printf("READ adj: %d\n",adj);
+	if (adj)
+		return 0;
 	unsigned char* wp=head->data+(off%512);
-
-	char* total=buf;
-	while (head->next && total-buf+SZ_BLOCK<size){
-		DEBUG?:printf("[%d]\t%lu/%lu bytes read.\n",head->fBlk_id,total-buf,(buf+size)-total);
+	unsigned char* total=buf;
+	while (head->next && (total-buf)+(SZ_BLOCK-(wp-head->data))<size){
+		DEBUG?:printf("[%d]\t%lu/%lu bytes read.(%lu remaining)\n",head->fBlk_id,total-buf,size,(buf+size)-total);
 		memcpy(total,wp,SZ_BLOCK-(wp-head->data));
 		//DEBUG?:printf("(read)[%d]->",head->fBlk_id);
 		total+=SZ_BLOCK-(wp-head->data);
@@ -528,15 +570,18 @@ unsigned long readFromFile(fUMan* fm, int id,char* buf, size_t size, off_t off){
 		wp=head->data;
 	}
 
-	DEBUG?:printf("[%d]\t%lu/%lu bytes read.\n",head->fBlk_id,total-buf,(buf+size)-total);
+	DEBUG?:printf("[%d]\t%lu/%lu bytes read.(%lu remaining)\n",head->fBlk_id,total-buf,size,(buf+size)-total);
 	size_t last=(total+SZ_BLOCK)>(buf+size) ? size-(total-buf) : SZ_BLOCK;
+	//size_t last=(size-(total-buf))>SZ_BLOCK ? SZ_BLOCK : size-(total-buf);
+	last-=(wp-head->data);
 	DEBUG?:printf("about to write %lu bytes.\n",last);
 	memcpy(total,wp,last);
 	total+=last;
 	if (total-buf<size)
-		DEBUG?:printf("(read)[%d]->WARNING (File is short,EARLY TAIL)\n",head->fBlk_id);
+		DEBUG?:printf("WARNING (File is short,EARLY TAIL)");
 	else
-		DEBUG?:printf("(read)[%d](TAIL)\n",head->fBlk_id);
+		DEBUG?:printf("(TAIL)\n");
+	printf("max buf size: %lu\tbytes read to buf: %lu\n",size,total-buf);
 	return total-buf;
 }
 
@@ -546,37 +591,44 @@ unsigned long writeToFile(fUMan* fm,int id,const char* buf,size_t size,off_t off
 	fObj* fo=fm->arr_fObjs[id];
 	fBlk* head=NULL;
 	int blocksToWrite=ceil(size/SZ_BLOCK);
-	DEBUG?:printf("%p<-source addr\n",buf);
+	DEBUG?:printf("buf addr:\t%p\n",&(*buf));
 	DEBUG?:printf("PLACE\n\tsource buf sz %lu,size %lu\n",sizeof(buf),size);
-	DEBUG?:printf("\twriting ino: %d,size: %lu, off_t: %lu\n",id,size,off);
-	DEBUG?:printf("\tdest buf sz %d\n",fo->dfe->file_sz*SZ_BLOCK-fo->len);
+	DEBUG?:printf("\twriting ino: %d,size: %lu, off_t: %li\n",id,size,off);
+	DEBUG?:printf("\tdest buf sz %li\n",(fo->dfe->file_sz*SZ_BLOCK)-off);
 	DEBUG?:printf("\tBlocks to write:%d\n",blocksToWrite);
-	seekStartfBlk(fo,&head,size,off);
+	int adj=seekStartfBlk(fo,&head,size,off);
+	DEBUG?:printf("WRITE adj: %d\n",adj);
+	if (adj)
+		return 0;
 	unsigned char* wp=head->data+(off%512);
 	
-	char* total=buf;
-	while (head->next && total-buf+SZ_BLOCK<size){
-		DEBUG?:printf("[%d]\t%lu/%lu bytes written.\n",head->fBlk_id,total-buf,(buf+size)-total);
+	const char* total=buf;
+	while (head->next && (total-buf)+(SZ_BLOCK-(wp-head->data))<size){
+		DEBUG?:printf("[%d]\t%lu/%lu bytes written.(%lu remaining)\n",head->fBlk_id,total-buf,size,(buf+size)-total);
 		memcpy(wp,total,SZ_BLOCK-(wp-head->data));
 		//DEBUG?:printf("(write)[%d]->",head->fBlk_id);
 		total+=SZ_BLOCK-(wp-head->data);
 		head=*head->next;
 		wp=head->data;
 	}
-	DEBUG?:printf("[%d]\t%lu/%lu bytes written.\n",head->fBlk_id,total-buf,(buf+size)-total);
+	DEBUG?:printf("[%d]\t%lu/%lu bytes written.(%lu remaining)\n",head->fBlk_id,total-buf,size,(buf+size)-total);
 
-	size_t last= (total+SZ_BLOCK)>(buf+size) ? (buf+size)-(total) : SZ_BLOCK;
+	//how much is left to write?
+	size_t last= (size-(total-buf))>SZ_BLOCK ? SZ_BLOCK : size-(total-buf);
+	last-=(wp-head->data);
+	//size_t last= (total+SZ_BLOCK)>(buf+size) ? (buf+size)-(total) : SZ_BLOCK;
+	//last=total-buf+SZ_BLOCK<size
 	DEBUG?:printf("about to write %lu bytes.\n",last);
 	memcpy(wp,total,last);
-	memset(wp+last, 0, SZ_BLOCK-((wp+last)-head->data));
+	memset(wp+last, 0, SZ_BLOCK-last);
 	total+=last;
 	if (total-buf<size)
-		DEBUG?:printf("(write)[%d]->WARNING (EARLY TAIL)\n",head->fBlk_id);
+		DEBUG?:printf("WARNING,EARLY TAIL\n");
 	else
-		DEBUG?:printf("(write)[%d](TAIL)\n",head->fBlk_id);
+		DEBUG?:printf("(TAIL)\n");
+	printf("max buf size: %lu\tbytes written to buf: %lu\n",size,total-buf);
 	fo->len=off+(total-buf);
 	return total-buf;
-
 }
 
 //save image to disk

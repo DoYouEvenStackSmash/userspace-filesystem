@@ -32,13 +32,17 @@ int lookupName(const char *name){
 static int reply_buf_limited(fuse_req_t req, const char *buf, size_t bufsize,
 	off_t off, size_t maxsize)
 {
-	DEBUG?:printf("limited buf addr: %p\n",buf);
-	//DEBUG?:printf("REPLY BUF LIMITED: bufsize: %lu, off: %lu, maxsize: %lu\n", bufsize,off,maxsize);
+	DEBUG?:printf("REPLY BUF LIMITED:\n\tbufsize: %lu, off: %lu, maxsize: %lu\n", bufsize,off,maxsize);
+	DEBUG?:printf("\tlimited buf addr: %p\n",&(*buf));
 	//DEBUG?:printf("\n\n***********BUFFER SIZE***********\nreply_buf_limited\n\nbuf:%lu *buf: %lu &buf:%lu\n*************************\n",sizeof(buf),sizeof(*buf),sizeof(&buf));
-	if (off < bufsize)
-		return fuse_reply_buf(req, buf + off,
-			min(bufsize - off, maxsize));
-	else{
+	//return fuse_reply_buf(req,buf,bufsize);
+	if (off < bufsize){
+		return fuse_reply_buf(req, buf + off,min(bufsize - off, maxsize));
+	// }
+	// else if (bufsize==maxsize){
+	// 	printf("ideal?\n")
+	// 	return fuse_reply_buf(req,buf,maxsize);
+	}else{
 		DEBUG?:printf("fragging\n");
 		return fuse_reply_buf(req, NULL, 0);
 	}
@@ -158,14 +162,20 @@ static void vmufs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 		fuse_reply_err(req,EISDIR);
 	else{
 		unsigned char buf[size];
-		memset(buf,0,size);
+		memset(buf,0,size*sizeof(unsigned char));
 		DEBUG?:printf("buf addr: %p\n",buf);
+		DEBUG?:printf("buf size: %lu\n",sizeof(buf));
 		DEBUG?:printf("READ\n\tino: %lu,size: %lu, off_t: %lu\n",ino,size,off);
 		size_t bytesRead;
 		bytesRead=readFromFile(globalfUM,ino,buf,size,off);
 		DEBUG?:printf("\tREAD: providing read size %lu\n",bytesRead);
-		reply_buf_limited(req,buf,bytesRead,off,size);
-		DEBUG?:printf("READ CALLBACK\n\tcallback buf has len %lu\n",sizeof(buf));
+		//reply_buf_limited(req,buf,bytesRead,off,size);
+		if (bytesRead)
+			fuse_reply_buf(req,buf,bytesRead);
+		else
+			fuse_reply_buf(req,NULL,0);
+		
+		//DEBUG?:printf("READ CALLBACK\n\tcallback buf has len %lu\n",sizeof(buf));
 
 	}
 	//if (strcmp(path+1,))
@@ -192,7 +202,7 @@ static void vmufs_readdir(fuse_req_t req, fuse_ino_t ino,size_t size,off_t off,s
 		free(b.p);
 
 	}
-	DEBUG?:displayfUManStats(globalfUM);
+	//DEBUG?:displayfUManStats(globalfUM);
 
 }
 
@@ -355,10 +365,10 @@ static void vmufs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
 static void vmufs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size, off_t off, struct fuse_file_info *fi){
 	if (ino==1){
 		fuse_reply_err(req,EISDIR);
-	}else{
+	}else if (buf){
 		DEBUG?:printf("\n\n***********BUFFER SIZE***********\nvmufs_write\n\nbuf:%lu *buf: %lu &buf:%lu\n*************************\n",sizeof(buf),sizeof(*buf),sizeof(&buf));
 		DEBUG?:printf("WRITE\n\twriting ino: %lu,size: %lu, off_t: %lu\n",ino,size,off);
-		DEBUG?:printf("%p<-source addr\n",buf);
+		DEBUG?:printf("buf_addr:\t%p\n",&(buf));
 
 		fObj* fo=globalfUM->arr_fObjs[ino];
 		//displayfObj(fo);
@@ -391,7 +401,7 @@ static void vmufs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t 
 			}
 		}else if (altBlockCount-currBlockCount<0){
 			reqBlocks=altBlockCount;
-			DEBUG?:printf("ino %d: removing %d blocks...",currBlockCount-altBlockCount);
+			DEBUG?:printf("ino %d: removing %d blocks...",ino,currBlockCount-altBlockCount);
 			reducefObj(globalfUM,reqBlocks,ino);
 			DEBUG?:printf("success!\n");
 		}
@@ -399,6 +409,9 @@ static void vmufs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t 
 		size_t bytesWritten;
 		bytesWritten=writeToFile(globalfUM,ino,buf,size,off);
 		fuse_reply_write(req,bytesWritten);
+	}else{
+		printf("ino %d END",ino);
+		fuse_reply_write(req,0);
 	}
 }
 

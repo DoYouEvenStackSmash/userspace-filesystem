@@ -327,6 +327,7 @@ static void vmufs_unlink(fuse_req_t req, fuse_ino_t parent,const char *name){
 		fuse_reply_err(req,0);
 	}
 }
+
 static void vmufs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
 			fuse_ino_t newparent, const char *newname){
 	if (parent !=1){
@@ -362,6 +363,7 @@ static void vmufs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
 			fuse_reply_err(req,EEXIST);
 	}
 }
+
 static void vmufs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size, off_t off, struct fuse_file_info *fi){
 	if (ino==1){
 		fuse_reply_err(req,EISDIR);

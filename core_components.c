@@ -30,7 +30,6 @@ void destroyfObj(fObj* fo){
 		free(fo->dfe);
 		fo->dfe=NULL;
 	}
-	//free(fo->data);
 	fo->HT_PN[0]=NULL;
 	fo->HT_PN[1]=NULL;
 	free(fo);
@@ -511,8 +510,8 @@ int reducefObj(fUMan* fm, unsigned short newLen, int id){
 
 int seekStartfBlk(fObj* fo, fBlk** headRef, size_t size, off_t off){
 	int startBlock=floor(off/SZ_BLOCK);
-	printf("fObj%d\t",fo->fObj_id);
-	printf("seekStartBlock%d\n",startBlock);
+	DEBUG?:printf("fObj%d\t",fo->fObj_id);
+	DEBUG?:printf("seekStartBlock%d\n",startBlock);
 	fBlk* head=(fBlk*)(fo->HT_PN[0]);
 	fBlk* tail=(fBlk*)(fo->HT_PN[1]);
 	DEBUG?:printf("[HEAD]");
@@ -531,18 +530,6 @@ int seekStartfBlk(fObj* fo, fBlk** headRef, size_t size, off_t off){
 	return 0;
 }
 
-// //identify read/write startblock
-// void seekStartfBlk(fObj* fo, fBlk** headRef, size_t size, off_t off){
-// 	int startBlock=floor(off/SZ_BLOCK);
-// 	fBlk* head=(fBlk*)(fo->HT_PN[0]);
-// 	DEBUG?:printf("[HEAD]");
-// 	for(int i=0;i<startBlock;i++){
-// 		DEBUG?:printf("%d-",head->fBlk_id);
-// 		head=*head->next;
-// 	}
-// 	(*headRef)=head;
-// 	DEBUG?:printf("(START)");
-// }
 
 unsigned long readFromFile(fUMan* fm, int id,unsigned char* buf, size_t size, off_t off){
 	fObj* fo=fm->arr_fObjs[id];
@@ -550,10 +537,6 @@ unsigned long readFromFile(fUMan* fm, int id,unsigned char* buf, size_t size, of
 	DEBUG?:printf("buf addr:\t%p\n",&(*buf));
 	DEBUG?:printf("READ\n\tsource buf sz %lu,size %lu\n",sizeof(buf),size);
 	DEBUG?:printf("\treading ino: %d,size: %lu, off_t: %lu\n",id,size,off);
-	//DEBUG?:printf("\tdest buf sz %d\n",fo->dfe->file_sz*SZ_BLOCK-fo->len);
-	// if (size+off>fo->len){
-	// 	return 0;
-	// }
 	fBlk* head=NULL;
 	int adj=seekStartfBlk(fo,&head,size,off);
 	DEBUG?:printf("READ adj: %d\n",adj);
@@ -581,21 +564,23 @@ unsigned long readFromFile(fUMan* fm, int id,unsigned char* buf, size_t size, of
 		DEBUG?:printf("WARNING (File is short,EARLY TAIL)");
 	else
 		DEBUG?:printf("(TAIL)\n");
-	printf("max buf size: %lu\tbytes read to buf: %lu\n",size,total-buf);
+	DEBUG?:printf("max buf size: %lu\tbytes read to buf: %lu\n",size,total-buf);
 	return total-buf;
 }
 
 
 unsigned long writeToFile(fUMan* fm,int id,const char* buf,size_t size,off_t off){
 
-	fObj* fo=fm->arr_fObjs[id];
-	fBlk* head=NULL;
 	int blocksToWrite=ceil(size/SZ_BLOCK);
+	fObj* fo=fm->arr_fObjs[id];
+	
 	DEBUG?:printf("buf addr:\t%p\n",&(*buf));
 	DEBUG?:printf("PLACE\n\tsource buf sz %lu,size %lu\n",sizeof(buf),size);
 	DEBUG?:printf("\twriting ino: %d,size: %lu, off_t: %li\n",id,size,off);
 	DEBUG?:printf("\tdest buf sz %li\n",(fo->dfe->file_sz*SZ_BLOCK)-off);
 	DEBUG?:printf("\tBlocks to write:%d\n",blocksToWrite);
+	
+	fBlk* head=NULL;
 	int adj=seekStartfBlk(fo,&head,size,off);
 	DEBUG?:printf("WRITE adj: %d\n",adj);
 	if (adj)
@@ -626,7 +611,7 @@ unsigned long writeToFile(fUMan* fm,int id,const char* buf,size_t size,off_t off
 		DEBUG?:printf("WARNING,EARLY TAIL\n");
 	else
 		DEBUG?:printf("(TAIL)\n");
-	printf("max buf size: %lu\tbytes written to buf: %lu\n",size,total-buf);
+	DEBUG?:printf("max buf size: %lu\tbytes written to buf: %lu\n",size,total-buf);
 	fo->len=off+(total-buf);
 	return total-buf;
 }
@@ -648,7 +633,6 @@ void writeToImage(fUMan* fm){
 	long dir_end=(fm->rb->end_dir_blk+1)*SZ_BLOCK;
 	for(int i=INODE_START;i<fm->max_fObjs;i++){
 		if (fm->arr_fObjs[i]->active==1){
-			//void displayfObj(fObj* fo){
 			DEBUG?:printf("here;DIR_TABLE %d\n",i-INODE_START);
 			memcpy(DIR_TABLE+(i-INODE_START),fm->arr_fObjs[i]->dfe,sizeof(dFEnt));
 		}

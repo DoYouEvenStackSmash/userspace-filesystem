@@ -48,7 +48,7 @@ static int reply_buf_limited(fuse_req_t req, const char *buf, size_t bufsize,
 	}
 }
 
-static int vmufs_stat(fuse_ino_t ino, struct stat *stbuf)
+static int moofs_stat(fuse_ino_t ino, struct stat *stbuf)
 {
 	if (ino<1 || globalfUM->arr_fObjs[ino]->active==0)
 		return -1;
@@ -88,17 +88,17 @@ static int vmufs_stat(fuse_ino_t ino, struct stat *stbuf)
 }
 
 
-static void vmufs_getattr(fuse_req_t req, fuse_ino_t ino,struct fuse_file_info *fi){
+static void moofs_getattr(fuse_req_t req, fuse_ino_t ino,struct fuse_file_info *fi){
 	struct stat stbuf;
 	(void) fi;
 	memset(&stbuf,0,sizeof(stbuf));
-	if (vmufs_stat(ino,&stbuf)==-1)
+	if (moofs_stat(ino,&stbuf)==-1)
 		fuse_reply_err(req,ENOENT);
 	else
 		fuse_reply_attr(req,&stbuf,100);
 }
 
-static void vmufs_lookup(fuse_req_t req,fuse_ino_t parent, const char *name){
+static void moofs_lookup(fuse_req_t req,fuse_ino_t parent, const char *name){
 	int flag=0;
 	struct fuse_entry_param e;
 	memset(&e,0,sizeof(e));
@@ -111,7 +111,7 @@ static void vmufs_lookup(fuse_req_t req,fuse_ino_t parent, const char *name){
 				e.ino=i;
 				e.attr_timeout=100;
 				e.entry_timeout=100;
-				vmufs_stat(e.ino,&e.attr);
+				moofs_stat(e.ino,&e.attr);
 				flag=1;
 				break;
 				//break;
@@ -124,7 +124,7 @@ static void vmufs_lookup(fuse_req_t req,fuse_ino_t parent, const char *name){
 		fuse_reply_entry(req,&e);
 }
 
-static void vmufs_open(fuse_req_t req,fuse_ino_t ino,struct fuse_file_info *fi){
+static void moofs_open(fuse_req_t req,fuse_ino_t ino,struct fuse_file_info *fi){
 	(void) fi;
 	DEBUG?:printf("\nopen?\n");
 	if (ino < 2)
@@ -150,12 +150,12 @@ static void dirbuf_add(fuse_req_t req,struct dirbuf* b,const char* name,fuse_ino
 	b->size+=fuse_add_direntry(req,NULL,0,buf,NULL,0);
 	b->p=realloc(b->p,b->size);
 	stbuf.st_ino = ino;
-	vmufs_stat(ino,&stbuf);
+	moofs_stat(ino,&stbuf);
 	fuse_add_direntry(req, b->p + old_size, b->size - old_size, buf, &stbuf,b->size);
 }
 
 
-static void vmufs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
+static void moofs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 	off_t off, struct fuse_file_info *fi){
 	(void) fi;
 	if (ino<2)
@@ -181,7 +181,7 @@ static void vmufs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 	//if (strcmp(path+1,))
 }
 
-static void vmufs_readdir(fuse_req_t req, fuse_ino_t ino,size_t size,off_t off,struct fuse_file_info *fi){
+static void moofs_readdir(fuse_req_t req, fuse_ino_t ino,size_t size,off_t off,struct fuse_file_info *fi){
 	(void) fi;
 	//printf("seeking ino %d\n",ino);
 	//displayActiveFiles(globalfUM);
@@ -206,7 +206,7 @@ static void vmufs_readdir(fuse_req_t req, fuse_ino_t ino,size_t size,off_t off,s
 
 }
 
-static void vmufs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr,
+static void moofs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr,
 	int to_set, struct fuse_file_info *fi){
 	(void) fi;
 	if (ino<1){
@@ -240,12 +240,12 @@ static void vmufs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr,
 	}
 }
 
-static void vmufs_flush(fuse_req_t req, fuse_ino_t ino,struct fuse_file_info *fi){
+static void moofs_flush(fuse_req_t req, fuse_ino_t ino,struct fuse_file_info *fi){
 	(void) fi;
 	fuse_reply_err(req,ENOSYS);
 }
 
-static void vmufs_create(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode,struct fuse_file_info *fi){
+static void moofs_create(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode,struct fuse_file_info *fi){
 	(void)fi;
 	if (globalfUM->avail_fBlks==0 || globalfUM->avail_fObjs==0){
 		fuse_reply_err(req,ENOSPC);
@@ -271,7 +271,7 @@ static void vmufs_create(fuse_req_t req, fuse_ino_t parent, const char *name, mo
 			e.ino=activatefObj(globalfUM,initdFEnt(0x33,buf,1,0));
 			e.attr_timeout=100;
 			e.entry_timeout=100;
-			vmufs_stat(e.ino,&e.attr);
+			moofs_stat(e.ino,&e.attr);
 			//e.attr.st_size=0;
 			//e.attr.st_mode=mode;
 			fuse_reply_create(req,&e,fi);
@@ -282,7 +282,7 @@ static void vmufs_create(fuse_req_t req, fuse_ino_t parent, const char *name, mo
 } 
 
 
-static void vmufs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode,dev_t rdev){
+static void moofs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode,dev_t rdev){
 	if (globalfUM->avail_fBlks==0 || globalfUM->avail_fObjs==0){
 		fuse_reply_err(req,ENOSPC);
 		//return;
@@ -307,7 +307,7 @@ static void vmufs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mod
 			e.ino=activatefObj(globalfUM,initdFEnt(0x33,buf,1,0));
 			e.attr_timeout=100;
 			e.entry_timeout=100;
-			vmufs_stat(e.ino,&e.attr);
+			moofs_stat(e.ino,&e.attr);
 			//e.attr.st_size=0;
 			//e.attr.st_mode=mode;
 			fuse_reply_entry(req,&e);
@@ -318,7 +318,7 @@ static void vmufs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mod
 }
 
 
-static void vmufs_unlink(fuse_req_t req, fuse_ino_t parent,const char *name){
+static void moofs_unlink(fuse_req_t req, fuse_ino_t parent,const char *name){
 	int fObj_id=lookupName(name);
 	if (fObj_id<0)
 		fuse_reply_err(req,ENOENT);
@@ -328,7 +328,7 @@ static void vmufs_unlink(fuse_req_t req, fuse_ino_t parent,const char *name){
 	}
 }
 
-static void vmufs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
+static void moofs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
 			fuse_ino_t newparent, const char *newname){
 	if (parent !=1){
 		fuse_reply_err(req, ENOENT);
@@ -364,11 +364,11 @@ static void vmufs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
 	}
 }
 
-static void vmufs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size, off_t off, struct fuse_file_info *fi){
+static void moofs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size, off_t off, struct fuse_file_info *fi){
 	if (ino==1){
 		fuse_reply_err(req,EISDIR);
 	}else if (buf){
-		DEBUG?:printf("\n\n***********BUFFER SIZE***********\nvmufs_write\n\nbuf:%lu *buf: %lu &buf:%lu\n*************************\n",sizeof(buf),sizeof(*buf),sizeof(&buf));
+		DEBUG?:printf("\n\n***********BUFFER SIZE***********\nmoofs_write\n\nbuf:%lu *buf: %lu &buf:%lu\n*************************\n",sizeof(buf),sizeof(*buf),sizeof(&buf));
 		DEBUG?:printf("WRITE\n\twriting ino: %lu,size: %lu, off_t: %lu\n",ino,size,off);
 		DEBUG?:printf("buf_addr:\t%p\n",&(buf));
 
@@ -417,21 +417,21 @@ static void vmufs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t 
 	}
 }
 
-static struct fuse_lowlevel_ops vmufs_oper = {
-	.lookup		= vmufs_lookup,
-	.readdir	= vmufs_readdir,
-	.getattr	= vmufs_getattr,
-	.setattr 	= vmufs_setattr,
-	.open		= vmufs_open,
-	.read		= vmufs_read,
-	.unlink 	= vmufs_unlink,
-	.create 	= vmufs_create,
-	//.getxattr	= vmufs_getxattr,
-	.flush		= vmufs_flush,
-	//.access		= vmufs_access,
-	.mknod		= vmufs_mknod,
-	.rename 	= vmufs_rename,
-	.write 		= vmufs_write,
+static struct fuse_lowlevel_ops moofs_oper = {
+	.lookup		= moofs_lookup,
+	.readdir	= moofs_readdir,
+	.getattr	= moofs_getattr,
+	.setattr 	= moofs_setattr,
+	.open		= moofs_open,
+	.read		= moofs_read,
+	.unlink 	= moofs_unlink,
+	.create 	= moofs_create,
+	//.getxattr	= moofs_getxattr,
+	.flush		= moofs_flush,
+	//.access		= moofs_access,
+	.mknod		= moofs_mknod,
+	.rename 	= moofs_rename,
+	.write 		= moofs_write,
 	
 };
 
@@ -542,8 +542,8 @@ int main(int argc, char *argv[])
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, NULL) != -1 &&
 		(ch = fuse_mount(mountpoint, &args)) != NULL) {
 		struct fuse_session *se;
-		se = fuse_lowlevel_new(&args, &vmufs_oper,
-		sizeof(vmufs_oper), NULL);
+		se = fuse_lowlevel_new(&args, &moofs_oper,
+		sizeof(moofs_oper), NULL);
 		if (se != NULL) {
 			if (fuse_set_signal_handlers(se) != -1) {
 				fuse_session_add_chan(se, ch);

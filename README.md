@@ -1,6 +1,11 @@
 # moofs
 
 moofs is a single level File Allocation Table(FAT) filesystem in userspace.
+
+## Writeup(In Progress)
+
+[MOOFS_writeup.pdf](https://github.com/DoYouEvenStackSmash/userspace-filesystem/files/4006161/MOOFS_writeup.pdf)
+
 ## High Level Overview
 
 ![moofs](https://user-images.githubusercontent.com/42816626/71530797-c527c480-28b9-11ea-8446-b592e46de854.png)

@@ -1,6 +1,9 @@
 # moofs
 
 moofs is a single level File Allocation Table(FAT) filesystem in userspace.
+## High Level Overview
+
+![moofs](https://user-images.githubusercontent.com/42816626/71530797-c527c480-28b9-11ea-8446-b592e46de854.png)
 
 ## Original PROJECT LINK
 https://bluegrit.cs.umbc.edu/~lsebald1/cmsc421-fa2018/project2.shtml

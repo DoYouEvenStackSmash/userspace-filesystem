@@ -5,7 +5,7 @@
 // #include <time.h>
 // #include <fuse_lowlevel.h>
 // #include <fuse_common.h>
-#include "components.h"
+#include "libfuman.h"
 // #include "fuse_fxns.h"
 //#define
 static fUMan* globalfUM=NULL;

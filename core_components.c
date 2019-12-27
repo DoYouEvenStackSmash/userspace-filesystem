@@ -1,4 +1,4 @@
-#include "components.h"
+#include "libfuman.h"
 //push a new fileObject onto the queue
 void Push(fObj** headRef,int inode){
 	fObj* nF=initfObj(inode);
@@ -277,12 +277,12 @@ void destroyfUMan(fUMan* fm){
 //finish building files present in image
 void assemblefObjfBlks(fUMan* fm,int id){
 	FILE* fptr;//spc
-	fptr=fopen(fm->imgName,"rb");//spc
+	fptr=fopen(fm->imgName,"r+");//spc
 	fObj* fo=fm->arr_fObjs[id];
 	fo->len=fo->dfe->file_sz*SZ_BLOCK;
 	fo->HT_PN[0]=(void*)(fm->arr_fBlks[fo->dfe->start_blk]);
 	fBlk* temp=(fBlk*)(fo->HT_PN[0]);
-	size_t bytes;
+	size_t bytes=0;
 	while(temp->next){
 		temp->data=(unsigned char*)calloc(sizeof(unsigned char),SZ_BLOCK);//spc
 		if (fseek(fptr, temp->fBlk_id*SZ_BLOCK,0)){//spc
@@ -292,7 +292,7 @@ void assemblefObjfBlks(fUMan* fm,int id){
 		bytes=fread(temp->data,sizeof(unsigned char),SZ_BLOCK,fptr);//spc
 		DEBUG?:printf("assemble fBObjfBlk fread:\t%d:\t%lu/%d retrieved\n",temp->fBlk_id,bytes,SZ_BLOCK);
 		(*temp->next)->prev=&(fm->arr_fBlks[temp->fBlk_id]);
-		//DEBUG?:printf("%d->",temp->fBlk_id);
+		DEBUG?:printf("%d->",temp->fBlk_id);
 		temp->fObj_id=id;
 		temp=*(temp->next);
 	}
@@ -632,9 +632,11 @@ void setTime(fUMan* fm){
 
 //save image to disk
 void writeToImage(fUMan* fm){
-	memset(fm->rb->blank2,0,14);
-	memset(fm->rb->unused,0,430);
-	int fat_len=(fm->rb->fat_sz*SZ_BLOCK)/2;
+	displayrBlk(fm->rb);
+	memset(&fm->rb->blank2,0,14);
+	memset(&fm->rb->unused,0,430);
+	int fat_len=fm->rb->fat_sz*(SZ_BLOCK/2);
+	DEBUG?:printf("FAT_SZ vs fat_len: %u vs %u\n",fm->rb->fat_sz*(SZ_BLOCK/2),fat_len);
 	unsigned short FAT_TABLE[fat_len];
 	memset(FAT_TABLE,0,sizeof(unsigned short)*fat_len);
 	for(int i=0;i<fat_len;i++)
@@ -646,7 +648,9 @@ void writeToImage(fUMan* fm){
 	fptr=fopen(fm->imgName,"r+");
 	//unsigned long DIR_START=dir_end-
 	long dir_start=(fm->rb->end_dir_blk+1-fm->rb->dir_sz)*SZ_BLOCK;
+	DEBUG?:("Dir start=%lu,end=",dir_start);
 	long dir_end=(fm->rb->end_dir_blk+1)*SZ_BLOCK;
+	DEBUG?:printf("%lu\n",dir_end);
 	for(int i=INODE_START;i<fm->max_fObjs;i++){
 		if (fm->arr_fObjs[i]->active==1){
 			DEBUG?:printf("here;DIR_TABLE %d\n",i-INODE_START);
@@ -682,11 +686,15 @@ void writeToImage(fUMan* fm){
 		}
 	}
 	fseek(fptr,dir_start,SEEK_SET);
+	DEBUG?:printf("DirEnt=%d\n",fm->max_fObjs-2);
 	fwrite(DIR_TABLE,sizeof(dFEnt),fm->max_fObjs-2,fptr);
 	long fat_start=(fm->rb->fat_start*SZ_BLOCK);
-	fseek(fptr,fat_start,SEEK_SET);
-	fwrite(FAT_TABLE,sizeof(FAT_TABLE),1,fptr);
-	fseek(fptr,-SZ_BLOCK,SEEK_END);
+	DEBUG?:printf("FAT START: %u\n",fm->rb->fat_start*SZ_BLOCK);
+	fseek(fptr,fm->rb->fat_start*SZ_BLOCK,SEEK_SET);
+	fwrite(FAT_TABLE,sizeof(unsigned short),fat_len,fptr);
+	DEBUG?:printf("fat table is %lu bytes.\n",sizeof(FAT_TABLE));
+	DEBUG?:printf("Currently at %lu\n",ftell(fptr));
+	//fseek(fptr,-SZ_BLOCK,SEEK_END);
 	fwrite(fm->rb,SZ_BLOCK,1,fptr);
 	fclose(fptr);
 }

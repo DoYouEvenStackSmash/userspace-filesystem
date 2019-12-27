@@ -197,7 +197,7 @@ static void moofs_readdir(fuse_req_t req, fuse_ino_t ino,size_t size,off_t off,s
 			if (globalfUM->arr_fObjs[i]->active==1)
 				dirbuf_add(req,&b,globalfUM->arr_fObjs[i]->dfe->file_name,i);
 		}
-		// displayActiveFiles(globalfUM);
+		DEBUG?:displayActiveFiles(globalfUM);
 		reply_buf_limited(req, b.p, b.size, off, size);
 		free(b.p);
 
@@ -411,6 +411,7 @@ static void moofs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t 
 		size_t bytesWritten;
 		bytesWritten=writeToFile(globalfUM,ino,buf,size,off);
 		fuse_reply_write(req,bytesWritten);
+		setTime(globalfUM);
 	}else{
 		printf("ino %d END",ino);
 		fuse_reply_write(req,0);

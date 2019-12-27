@@ -616,8 +616,24 @@ unsigned long writeToFile(fUMan* fm,int id,const char* buf,size_t size,off_t off
 	return total-buf;
 }
 
+void setTime(fUMan* fm){
+	time_t rawtime;
+	struct tm * timeinfo;
+	time(&rawtime);
+        timeinfo = localtime(&rawtime);
+	//unsigned int timeint[8] ={timeinfo->tm_sec , timeinfo->tm_min, timeinfo->tm_hour, timeinfo->tm_mday, timeinfo->tm_mon, timeinfo->tm_year, timeinfo->tm_wday};
+	unsigned int timeint[8]= {(timeinfo->tm_year+1900)/100,(timeinfo->tm_year+1900)%100, timeinfo->tm_mon+1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, (timeinfo->tm_wday+6)%7};
+	//unsigned char bcd[8];
+	int i;
+	for (i=0; i<8; i++){
+		fm->rb->BCD[i]= ((timeint[i]/10) << 4) + (timeint[i]%10);
+	}
+}
+
 //save image to disk
 void writeToImage(fUMan* fm){
+	memset(fm->rb->blank2,0,14);
+	memset(fm->rb->unused,0,430);
 	int fat_len=(fm->rb->fat_sz*SZ_BLOCK)/2;
 	unsigned short FAT_TABLE[fat_len];
 	memset(FAT_TABLE,0,sizeof(unsigned short)*fat_len);

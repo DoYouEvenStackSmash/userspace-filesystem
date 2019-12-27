@@ -208,7 +208,7 @@ int seekStartfBlk(fObj* fo, fBlk** hRef, size_t size, off_t off);
 /*read/write on file id, seek to off_t and read size_t bytes to/from buffer*/
 unsigned long readFromFile(fUMan* fm, int id,unsigned char* buffer, size_t size, off_t off);
 unsigned long writeToFile(fUMan* fm,int id,const char* buffer,size_t size,off_t off);
-
+void setTime(fUMan* fm);
 //write fUMan* to disk
 void writeToImage(fUMan* fm);
 

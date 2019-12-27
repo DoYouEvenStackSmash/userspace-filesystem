@@ -13,7 +13,7 @@ moofs is a single level File Allocation Table(FAT) filesystem in userspace.
 ## Original PROJECT LINK
 https://bluegrit.cs.umbc.edu/~lsebald1/cmsc421-fa2018/project2.shtml
 
-### Prerequisits
+### Prerequisites
 
 Make sure you have fuse depencencies.
 
